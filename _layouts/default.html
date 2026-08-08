@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+{%- include head.html -%}
+</head>
+<body class="{{ page.body_class | default: 'doc' }}">
+
+  <div class="glow glow--top" aria-hidden="true"></div>
+
+  {%- include header.html -%}
+
+  <main id="main">
+    {{ content }}
+  </main>
+
+  {%- include footer.html -%}
+
+</body>
+</html>

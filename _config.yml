@@ -1,8 +1,29 @@
-title: HybridHELIX Staging
+title: HybridHELIX Consulting
 description: Staging environment for HybridHELIX Consulting
 baseurl: ""
 url: "https://staging.hybridhelix.net"
-theme: minima
+
+# --- URL architecture (locked 8/8/2026, 30.6.5) -------------------------
+# No dates in URLs. Category is the lane: /blog/<slug>/ or /reports/<slug>/.
+# Changing this later creates redirects. Do not change it casually.
+permalink: /:categories/:slug/
 
 plugins:
   - jekyll-feed
+
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+      categories: [blog]
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - AUTHORING.md
+  - README.md
+
+# Staging is noindex end to end. See _includes/custom-head.html.

@@ -1,0 +1,17 @@
+<header class="site-head">
+  <div class="shell shell--bar">
+    <a class="wordmark" href="{{ '/' | relative_url }}">
+      <img src="{{ '/logo.png' | relative_url }}" width="34" height="34" alt="HybridHELIX">
+      <span>Hybrid<b>HELIX</b></span>
+    </a>
+
+    <nav class="navlinks" aria-label="Primary">
+      {%- for item in site.data.navigation -%}
+        {%- if item.live -%}
+          {%- assign target = item.url | relative_url -%}
+          <a href="{{ target }}"{% if page.url contains item.url %} class="on" aria-current="page"{% endif %}>{{ item.title }}</a>
+        {%- endif -%}
+      {%- endfor -%}
+    </nav>
+  </div>
+</header>

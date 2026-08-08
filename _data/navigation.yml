@@ -1,0 +1,34 @@
+# Global navigation. Edit here, it changes on every layout-based page.
+# live: false keeps a planned destination on the roadmap without shipping a dead link.
+
+- title: Solutions
+  url: /solutions/
+  live: false
+
+- title: BusinessOS 2.0
+  url: /businessos/
+  live: false
+
+- title: VSS
+  url: /vss/
+  live: false
+
+- title: AI & Automation
+  url: /ai-automation/
+  live: false
+
+- title: "#ChangeTank"
+  url: /changetank/
+  live: false
+
+- title: Reports
+  url: /reports/
+  live: true
+
+- title: Blog
+  url: /blog/
+  live: true
+
+- title: About
+  url: /about/
+  live: false

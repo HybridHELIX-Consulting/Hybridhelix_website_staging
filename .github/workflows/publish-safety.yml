@@ -1,0 +1,47 @@
+name: Publish safety
+
+# Enforces R-10: a layout-less page can ship without crawl protection and nothing
+# warns you. Agent-driven publishing removed the human upload step that used to
+# catch this, so it is enforced here instead of by operator vigilance.
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  crawl-protection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every published HTML page must be layout-based or explicitly noindexed
+        run: |
+          fail=0
+          while IFS= read -r f; do
+            if head -n 1 "$f" | grep -q '^---'; then
+              continue
+            fi
+            if grep -qi 'name="robots"' "$f"; then
+              continue
+            fi
+            echo "::error file=$f::No front matter and no robots meta tag. This page would publish without crawl protection. Add a layout in front matter, or paste <meta name=\"robots\" content=\"noindex, nofollow\"> into its head. See AUTHORING.md."
+            fail=1
+          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -name '*.html' -not -path './_layouts/*' -not -path './_includes/*' -print)
+          if [ "$fail" -eq 0 ]; then
+            echo "All published HTML pages are layout-based or explicitly noindexed."
+          fi
+          exit $fail
+
+      - name: Posts must carry front matter
+        run: |
+          fail=0
+          if [ -d _posts ]; then
+            for f in _posts/*.md _posts/*.markdown; do
+              [ -e "$f" ] || continue
+              head -n 1 "$f" | grep -q '^---' || { echo "::error file=$f::Post is missing front matter."; fail=1; }
+            done
+          fi
+          exit $fail
