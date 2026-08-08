@@ -3,6 +3,11 @@ name: Publish safety
 # Enforces R-10: a layout-less page can ship without crawl protection and nothing
 # warns you. Agent-driven publishing removed the human upload step that used to
 # catch this, so it is enforced here instead of by operator vigilance.
+#
+# Hardened 8/8/2026 per PSS findings F-2 and F-3 on MARKETING-917.
+#
+# NOTE: this workflow only becomes a gate once branch protection on main lists
+# it as a required status check. Until then a red run blocks nothing.
 
 on:
   pull_request:
@@ -21,27 +26,84 @@ jobs:
         run: |
           fail=0
           while IFS= read -r f; do
-            if head -n 1 "$f" | grep -q '^---'; then
+            # Extract the front matter block, if there is one.
+            fm=$(awk 'NR==1 && /^---[[:space:]]*$/ {inb=1; next} inb && /^---[[:space:]]*$/ {exit} inb' "$f")
+
+            if [ -n "$fm" ]; then
+              # F-2: front matter alone is not enough. A page with front matter but
+              # no layout: key renders outside the layout path, never pulls
+              # _includes/custom-head.html, and publishes with no crawl protection.
+              if printf '%s\n' "$fm" | grep -Eq '^layout:[[:space:]]*[^[:space:]#]'; then
+                continue
+              fi
+              echo "::error file=$f::Front matter is present but declares no layout. This page renders outside the layout path, so it will not inherit the noindex from _includes/custom-head.html. Add a layout: key. See AUTHORING.md Rule 1."
+              fail=1
               continue
             fi
-            if grep -qi 'name="robots"' "$f"; then
+
+            # F-2: match noindex specifically. The previous check grepped for
+            # name="robots", which passed content="index, follow" just as happily.
+            if grep -Eqi '<meta[^>]*name=["'"'"']?robots["'"'"']?[^>]*noindex' "$f"; then
               continue
             fi
-            echo "::error file=$f::No front matter and no robots meta tag. This page would publish without crawl protection. Add a layout in front matter, or paste <meta name=\"robots\" content=\"noindex, nofollow\"> into its head. See AUTHORING.md."
+
+            echo "::error file=$f::No layout and no noindex robots meta tag. This page would publish without crawl protection. Add front matter with a layout, or paste <meta name=\"robots\" content=\"noindex, nofollow\"> into its head. See AUTHORING.md Rule 1."
             fail=1
           done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -name '*.html' -not -path './_layouts/*' -not -path './_includes/*' -print)
+
           if [ "$fail" -eq 0 ]; then
             echo "All published HTML pages are layout-based or explicitly noindexed."
           fi
           exit $fail
 
-      - name: Posts must carry front matter
+      - name: Posts must carry front matter and resolve to exactly one lane
         run: |
           fail=0
           if [ -d _posts ]; then
             for f in _posts/*.md _posts/*.markdown; do
               [ -e "$f" ] || continue
-              head -n 1 "$f" | grep -q '^---' || { echo "::error file=$f::Post is missing front matter."; fail=1; }
+
+              fm=$(awk 'NR==1 && /^---[[:space:]]*$/ {inb=1; next} inb && /^---[[:space:]]*$/ {exit} inb' "$f")
+              if [ -z "$fm" ]; then
+                echo "::error file=$f::Post is missing front matter."
+                fail=1
+                continue
+              fi
+
+              # F-3: the lane derives from categories | first, so a second or
+              # misspelled category silently changes both the URL and the label.
+              # Require exactly one, and require it to be a known lane.
+              cats=$(printf '%s\n' "$fm" \
+                | sed -n 's/^categories:[[:space:]]*//p' \
+                | tr -d '[]"'"'"',' )
+
+              if [ -z "$cats" ]; then
+                echo "::error file=$f::Post declares no categories, so it silently defaults to the blog lane. State it explicitly: categories: [blog] or categories: [reports]. See AUTHORING.md Rule 3."
+                fail=1
+                continue
+              fi
+
+              count=0
+              for c in $cats; do
+                case "$c" in
+                  blog|reports)
+                    count=$((count + 1))
+                    ;;
+                  *)
+                    echo "::error file=$f::Unknown category '$c'. The only lanes are blog and reports. Use tags for any secondary classification."
+                    fail=1
+                    ;;
+                esac
+              done
+
+              if [ "$count" -ne 1 ]; then
+                echo "::error file=$f::Post must resolve to exactly one lane, found $count. blog and reports are mutually exclusive because the URL and the label both derive from the first category."
+                fail=1
+              fi
             done
+          fi
+
+          if [ "$fail" -eq 0 ]; then
+            echo "All posts carry front matter and resolve to exactly one lane."
           fi
           exit $fail
