@@ -1,0 +1,8 @@
+title: HybridHELIX Staging
+description: Staging environment for HybridHELIX Consulting
+baseurl: ""
+url: "https://staging.hybridhelix.net"
+theme: minima
+
+plugins:
+  - jekyll-feed
