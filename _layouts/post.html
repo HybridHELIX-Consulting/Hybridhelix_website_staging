@@ -1,0 +1,16 @@
+---
+layout: default
+---
+{%- assign lane = page.categories | first | default: 'blog' -%}
+<article class="shell prose">
+  <p class="eyebrow">{% if lane == 'reports' %}Report{% else %}Field note{% endif %} &middot; {{ page.date | date: "%B %-d, %Y" }}</p>
+  <h1>{{ page.title }}</h1>
+  {%- if page.lede %}<p class="lede">{{ page.lede }}</p>{%- endif %}
+
+  <div class="rule"></div>
+
+  {{ content }}
+
+  <div class="rule"></div>
+  <p class="footnote"><a href="{{ '/' | append: lane | append: '/' | relative_url }}">&larr; All {{ lane }}</a></p>
+</article>

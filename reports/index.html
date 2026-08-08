@@ -1,0 +1,22 @@
+---
+layout: page
+title: Reports
+eyebrow: Intelligence
+lede: Published research and analysis from the HybridHELIX intelligence practice.
+permalink: /reports/
+---
+
+{%- assign entries = site.categories.reports -%}
+{%- if entries and entries.size > 0 -%}
+<div class="entries">
+  {%- for entry in entries %}
+  <a class="entry" href="{{ entry.url | relative_url }}">
+    <span class="entry-d">{{ entry.date | date: "%B %-d, %Y" }}</span>
+    <span class="entry-t">{{ entry.title }}</span>
+    <span class="entry-x">{{ entry.lede | default: entry.excerpt | strip_html | truncate: 180 }}</span>
+  </a>
+  {%- endfor %}
+</div>
+{%- else -%}
+<p class="empty">No reports published yet.</p>
+{%- endif -%}

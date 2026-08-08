@@ -1,0 +1,23 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+{%- capture page_title -%}
+{%- if page.title -%}{{ page.title }} &middot; {{ site.title }}{%- else -%}{{ site.title }}{%- endif -%}
+{%- endcapture -%}
+<title>{{ page_title }}</title>
+
+{%- if page.description %}
+<meta name="description" content="{{ page.description | strip_html | truncate: 200 }}">
+{%- endif %}
+
+{%- comment -%}
+Crawl protection. Applies to every page rendered through a layout.
+A raw .html file dropped in the repo root does NOT get this. See AUTHORING.md.
+{%- endcomment -%}
+{% include custom-head.html %}
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200;300;400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ '/assets/css/site.css' | relative_url }}">
+<link rel="icon" href="{{ '/logo.png' | relative_url }}">
