@@ -30,16 +30,28 @@ CI enforces this. `.github/workflows/publish-safety.yml` fails the build on any
 root-level `.html` file that has neither. This applies to agent-authored commits
 exactly as it applies to human ones.
 
-## Rule 2 — Images are files in the repo, not pasted markup
+## Rule 2 — Images are files in `images/`, not pasted markup
 
-Upload the image file to the repository and reference it by relative path:
+Every image lives under `images/`, in the directory that matches who owns the mark:
 
-```html
-<img src="/logo.png" width="34" height="34" alt="HybridHELIX">
+| Directory | Contents |
+| --- | --- |
+| `images/hhc/` | HybridHELIX brand assets — logo, wordmark, icons, original graphics |
+| `images/clickup-verified/` | ClickUp Verified Consultant badges (ClickUp's marks, licensed to us) |
+
+Upload the real file and reference it through `relative_url` so the path survives a
+base URL change:
+
+```liquid
+<img src="{{ '/images/hhc/logo.png' | relative_url }}" width="34" height="34" alt="HybridHELIX">
 ```
 
 Do not paste image markup, inline SVG approximations, or base64 blobs copied from
 another tool. The homepage logo failed on first deploy for exactly this reason.
+
+**The ClickUp badges are not ours to modify.** Do not recolor, crop, stretch, or add
+effects, and do not place one where it implies ClickUp endorses a specific claim,
+outcome, or price. See `images/clickup-verified/README.md` before using one.
 
 ## Rule 3 — URL structure is locked
 
@@ -64,6 +76,10 @@ Loosening it requires a new decision register entry, not an informal relaxation.
 A publisher who does not know an agent may also be committing will eventually be
 surprised by a change they did not make. Expect PRs you did not open.
 
+**Known limitation:** the agent route can currently write to a branch but cannot
+open or merge a pull request. Until that permission is granted, a human has to
+file and merge every agent-authored change.
+
 ## Where things live
 
 | Path | Purpose |
@@ -74,4 +90,11 @@ surprised by a change they did not make. Expect PRs you did not open.
 | `_layouts/` | `default`, `page`, `post`, `solution`, `credibility` |
 | `_posts/` | Markdown blog and reports. Filename: `YYYY-MM-DD-slug.md` |
 | `assets/css/site.css` | Shared brand tokens and interior styles |
+| `images/hhc/` | HybridHELIX brand assets |
+| `images/clickup-verified/` | ClickUp Verified Consultant badges |
 | `index.html` | Standalone homepage, fixed-width, not yet on the layout system |
+
+**Pending move:** `logo.png` still sits at the repository root and is referenced from
+`_includes/header.html` and `_includes/footer.html`. It belongs in `images/hhc/`. The
+file move and both reference updates must land in the same change, or the logo
+breaks in between.
