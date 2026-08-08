@@ -7,6 +7,9 @@ Our own marks and original graphics. We own these and control how they are used.
 Lowercase, hyphenated, descriptive. Include the variant when there is more than
 one: `logo.png`, `logo-mono-light.png`, `wordmark-horizontal.svg`.
 
+No spaces, no parentheses. Both percent-encode in URLs (`%20`, `%28`) and are a
+reliable source of broken image paths.
+
 ## Palette reference
 
 For anyone producing new assets to match:
@@ -20,9 +23,12 @@ For anyone producing new assets to match:
 | Dark green | `#2d8b4e` |
 | Lime (secondary accent) | `#8cc63f` |
 
-## Pending
+## Current assets
 
-`logo.png` currently sits at the repository root and is referenced from
-`_includes/header.html` and `_includes/footer.html`. It moves here, and those
-two references update in the same change, so the site never points at a file
-that is not there yet.
+| File | Used by |
+| --- | --- |
+| `logo.png` | Header wordmark, footer wordmark, favicon, homepage (hero + footer) |
+
+`logo.png` is 225x225 and is currently rendered at 26-38px. That is a deliberate
+oversupply so it stays sharp on high-density displays. If a genuinely large
+placement is ever needed, produce an SVG rather than upscaling this file.
