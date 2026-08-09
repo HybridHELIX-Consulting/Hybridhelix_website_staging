@@ -60,6 +60,8 @@ or `/reports/<slug>/` depending on their `categories` front matter. No dates in
 URLs. Changing this rule after pages exist creates redirect debt, so it does not
 change without a `DEC-W4-nnn` entry.
 
+**Legal collection** uses a separate permalink: `/legal/:slug/`. Same lock applies.
+
 ## Rule 4 — Nothing goes to `main` without a pull request
 
 Per **DEC-W4-004**. Direct-to-main is not authorized for humans or agents.
@@ -80,21 +82,61 @@ surprised by a change they did not make. Expect PRs you did not open.
 open or merge a pull request. Until that permission is granted, a human has to
 file and merge every agent-authored change.
 
+## Rule 6 — Legal/policy pages use the `_legal` collection
+
+The `_legal` collection renders structured documents (legal, policy, public
+statements, corrections) at `/legal/<slug>/`. It shares the layout system with
+blog/reports but is a **separate collection** — no RSS feed, no author byline,
+no related-posts logic.
+
+### Front-matter schema
+
+```yaml
+---
+title: "Privacy Policy"
+effective_date: 2026-08-09
+last_updated: 2026-08-09
+summary: "How we collect and use personal data."
+index: true
+---
+```
+
+| Field | Required | Purpose |
+| --- | --- | --- |
+| `title` | Yes | Page heading and listing title |
+| `effective_date` | Yes | When the document takes effect. Rendered automatically. |
+| `last_updated` | When revised | Shows "Last updated" in the header. Omit on first publish. |
+| `summary` | Recommended | One-line description for the `/legal/` index listing |
+| `index` | No (defaults `true`) | Set `false` to hide from the `/legal/` listing page |
+
+`layout: legal` is applied automatically by `_config.yml` defaults. Do not
+override it unless you have a reason.
+
+### Adding a new legal/policy page
+
+1. Create a file in `_legal/` named `your-slug.md` (lowercase, dashes for spaces).
+2. Add the front-matter block above with correct dates.
+3. Write the body in Markdown below the closing `---`.
+4. The page publishes at `/legal/your-slug/` and appears in the `/legal/` index.
+
+### What not to do
+
+- Do not put legal documents in `_posts/`. They are not blog posts.
+- Do not add `categories` — legal pages route by collection, not by category.
+- Do not add `author` or `tags` — these fields are ignored by the legal layout.
+
 ## Where things live
 
 | Path | Purpose |
 | --- | --- |
-| `_config.yml` | Site settings and the locked permalink rule |
+| `_config.yml` | Site settings, collections, and the locked permalink rule |
 | `_data/navigation.yml` | Global nav. Edit once, changes everywhere. `live: false` hides a planned link |
 | `_includes/` | `head`, `header`, `footer`, `custom-head` (noindex) |
-| `_layouts/` | `default`, `page`, `post`, `solution`, `credibility` |
+| `_layouts/` | `default`, `page`, `post`, `legal`, `solution`, `credibility` |
 | `_posts/` | Markdown blog and reports. Filename: `YYYY-MM-DD-slug.md` |
+| `_legal/` | Legal, policy, and public-statement documents. Filename: `slug.md` |
+| `legal/index.html` | The `/legal/` listing page (auto-renders from `_legal` entries) |
 | `assets/css/site.css` | Shared brand tokens and interior styles |
 | `images/hhc/` | HybridHELIX brand assets |
 | `images/clickup-verified/` | ClickUp Verified Consultant badges |
 | `index.html` | Standalone homepage, fixed-width, not yet on the layout system |
-
-**Pending move:** `logo.png` still sits at the repository root and is referenced from
-`_includes/header.html` and `_includes/footer.html`. It belongs in `images/hhc/`. The
-file move and both reference updates must land in the same change, or the logo
-breaks in between.
