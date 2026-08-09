@@ -1,0 +1,22 @@
+---
+layout: page
+title: Legal
+eyebrow: Legal Documents
+lede: Policies, terms, and public statements governing HybridHELIX Consulting services.
+permalink: /legal/
+---
+
+{%- assign entries = site.legal | where: "index", true | sort: "title" -%}
+{%- if entries and entries.size > 0 -%}
+<div class="entries">
+  {%- for entry in entries %}
+  <a class="entry" href="{{ entry.url | relative_url }}">
+    <span class="entry-d">{% if entry.last_updated %}Updated {{ entry.last_updated | date: "%B %-d, %Y" }}{% elsif entry.effective_date %}Effective {{ entry.effective_date | date: "%B %-d, %Y" }}{% endif %}</span>
+    <span class="entry-t">{{ entry.title }}</span>
+    <span class="entry-x">{{ entry.summary | default: entry.excerpt | strip_html | truncate: 180 }}</span>
+  </a>
+  {%- endfor %}
+</div>
+{%- else -%}
+<p class="empty">No legal documents published yet.</p>
+{%- endif -%}
