@@ -11,6 +11,15 @@ permalink: /:categories/:slug/
 plugins:
   - jekyll-feed
 
+# --- Collections (extended 8/9/2026, 30.11) ------------------------------
+# Legal/policy documents get their own collection. Not in the feed, not in
+# related-posts, not in the sitemap-for-posts. Adding a new policy page is
+# a markdown file in _legal/ with the right front matter.
+collections:
+  legal:
+    output: true
+    permalink: /legal/:slug/
+
 defaults:
   - scope:
       path: ""
@@ -18,6 +27,12 @@ defaults:
     values:
       layout: post
       categories: [blog]
+  - scope:
+      path: ""
+      type: legal
+    values:
+      layout: legal
+      index: true
 
 exclude:
   - Gemfile
