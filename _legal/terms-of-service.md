@@ -10,9 +10,7 @@ index: true
 ## Momentum Accelerator: Client Agreement
 
 **HybridHELIX Consulting LLC**\
-2105 Vista Oeste Dr NW Suite E #2015, Albuquerque, NM, 87120, United States\
-505-750-8226\
-Tax ID: 82-5064557\
+2105 Vista Oeste Dr NW Suite E #3606, Albuquerque, NM, 87120, United States\
 (Hereinafter referred to as "Service Provider")
 
 By signing this Agreement, Client has retained HybridHELIX Consulting LLC ("Service Provider") to proceed with the requested Momentum Accelerator services, and agrees to the terms and conditions as set forth within this agreement.
@@ -61,7 +59,6 @@ Client agrees to pay for Services based on the selected payment plan:
 ## 5. Office Hours and Communication
 
 - Office hours are Monday through Friday, 9:00 am to 8:00 pm Mountain Time (MST/MDT).
-- Phone calls are available during office hours at 505-591-1045 and 505-750-8226.
 - Email communication is available anytime at clientpartnerships@hybridhelix.net or via mutually agreed-upon asynchronous chat software. Responses will generally be provided during office hours. Scheduled weekly sessions will occur at mutually agreed-upon times.
 
 ## 6. Materials and Information
