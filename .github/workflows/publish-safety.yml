@@ -18,10 +18,18 @@ name: Publish safety
 # Hardened 8/8/2026 per PSS findings F-2 and F-3 on MARKETING-917.
 # Extended 8/9/2026 per MARKETING-949 closeout audit.
 #
+# Runner note: actions/checkout is pinned to v6 to match jekyll.yml. v4 runs on
+# Node 20, which is end-of-life and currently forced onto Node 24 by the runner.
+# Keep all three jobs in this repository on the same checkout major - version
+# skew between the deploy workflow and the gates is how one of them quietly
+# stops working while the other looks fine.
+#
 # NOTE: branch protection lists required status checks INDIVIDUALLY, by job
 # name. Adding a job here does not make it a gate. Both crawl-protection and
 # disclosure-scan must appear in the required-checks list on main, or a red run
-# blocks nothing.
+# blocks nothing. Conversely, requiring a check whose workflow is not yet on
+# main leaves every other pull request waiting on a status that can never
+# report - land the workflow first, then require it.
 
 on:
   pull_request:
@@ -37,7 +45,7 @@ jobs:
   crawl-protection:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Every published HTML page must be layout-based or explicitly noindexed
         run: |
@@ -128,7 +136,7 @@ jobs:
   disclosure-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Nothing sensitive reaches public output
         run: |
