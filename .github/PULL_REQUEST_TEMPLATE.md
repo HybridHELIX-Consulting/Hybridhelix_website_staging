@@ -3,19 +3,21 @@
 📄 **ClickUp Change Page:** [paste URL here]
 
 <!--
-DO NOT add implementation details, rationale, or internal context below this line.
-All PR documentation lives in the project notebook Change Log page. The URL above
-requires authentication. GitHub is a public hosting mechanism only.
+This repository is public. Do not add implementation details, rationale, or
+internal context anywhere in this PR. All change documentation lives in the
+change record, which requires authentication.
 
-Link the specific Change Log entry page, not the notebook root.
+Link the specific change-record page, not the notebook root.
 
-This comment is NOT private. Comment text is hidden in the rendered view only --
-it is fully readable in the raw PR body and through the public API. Never use a
-comment block to hide internal context.
+This comment block is not private. Keep nothing here that should not be public.
 
-The CI check (pr-template-compliance) will fail this PR if:
-  - No ClickUp URL is present (any clickup.com subdomain is accepted)
+The same rule applies to COMMIT MESSAGES. Keep them to a subject line.
+
+The pr-template-compliance check will fail this PR if:
+  - No change-record URL is present
   - An HTML comment is left unterminated
   - The visible description exceeds 300 characters
   - The raw description including comments exceeds 1500 characters
+  - Any commit message exceeds 300 characters
+  - Any commit message contains sensitive terms without a disclosure-ok marker
 -->
