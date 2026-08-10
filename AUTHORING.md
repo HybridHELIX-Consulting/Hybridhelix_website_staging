@@ -125,6 +125,68 @@ override it unless you have a reason.
 - Do not add `categories` — legal pages route by collection, not by category.
 - Do not add `author` or `tags` — these fields are ignored by the legal layout.
 
+## Rule 7 — Assume everything you commit is being read by a stranger
+
+The repository can be made private. **The site cannot.** Every word that reaches
+`_legal/`, `_posts/`, a layout, or a root `.html` file is being published to
+anyone who asks for it, including scrapers that never leave a log entry.
+
+CI enforces a floor. `.github/scripts/disclosure-scan.sh` runs on every pull
+request and inspects everything destined for `_site` in two tiers.
+
+**Blocking — these fail the build.** Categorical items that have no legitimate
+place on a marketing site:
+
+| Class | What it catches |
+| --- | --- |
+| Tax identification | Federal EIN, whether labelled or bare |
+| Personal identifiers | Social Security number patterns |
+| Unsigned instruments | Blank fill-in fields and contract execution clauses |
+| Credentials | Token, key, and private-key shapes |
+
+**Advisory — these annotate the pull request without failing it.** Items that are
+sometimes exactly what we intend to publish, and sometimes a leak:
+
+| Class | Why it is a judgment call |
+| --- | --- |
+| Phone numbers | A published contact number is normal. An internal line is not. |
+| Rates and retainers | Public pricing is a choice. One engagement's terms are not. |
+| Contract vocabulary | Signals a document class that may not belong at this URL. |
+| Street and suite detail | Legitimate on a legal page — just needs to be current. |
+
+### Why the split
+
+A pattern matcher can be certain that a signature block does not belong on a
+website. It cannot be certain whether a price is one we mean to publish. Blocking
+on the second class would produce a gate people learn to route around, which is
+worse than no gate — a disabled check still looks green.
+
+So the machine stops what is categorically wrong and shows a person what is
+contextually questionable. **The judgment layer is still yours.** No scan will
+ever ask the question that actually mattered on 8/9/2026: *is this the right kind
+of document to be sitting at this URL at all?*
+
+### Waiving a finding
+
+Two ways, both visible in a diff:
+
+1. Add the literal flagged text to `.disclosure-allow` with a comment naming who
+   approved it and why.
+2. Put the marker `disclosure-ok` on the same line.
+
+Waiving is legitimate. Publishing a contact number should be possible. The point
+is that it becomes a decision somebody made on purpose, in a reviewable diff,
+rather than something that arrived by paste and left by accident.
+
+**Never allowlist a credential.** Rotate it.
+
+### Before you paste an exported document
+
+Every incident this rule exists to prevent began the same way: an export from
+another tool, pasted in good faith, published without being read end to end. Read
+the whole thing first. Ask what class of document it is, who it was written for,
+and whether that audience is the public.
+
 ## Where things live
 
 | Path | Purpose |
@@ -140,3 +202,5 @@ override it unless you have a reason.
 | `images/hhc/` | HybridHELIX brand assets |
 | `images/clickup-verified/` | ClickUp Verified Consultant badges |
 | `index.html` | Standalone homepage, fixed-width, not yet on the layout system |
+| `.disclosure-allow` | Values explicitly approved for publication (Rule 7) |
+| `.github/scripts/` | CI helper scripts, including the disclosure scan |

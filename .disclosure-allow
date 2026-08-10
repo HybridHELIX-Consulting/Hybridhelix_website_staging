@@ -1,0 +1,24 @@
+# Disclosure allowlist - HybridHELIX Website 4.0
+#
+# Read by .github/scripts/disclosure-scan.sh. Each non-comment line is a literal
+# string that is APPROVED FOR PUBLICATION. A finding whose matched text equals an
+# entry here is suppressed.
+#
+# This file exists so that publishing something sensitive is a deliberate,
+# reviewable act rather than an accident. Adding a line here is a decision. It
+# shows up in a diff, it gets reviewed like any other change, and the reason is
+# recorded next to it.
+#
+# Rules of use:
+#   - One literal value per line. Not a regex. It must match the flagged text exactly.
+#   - Always leave a comment saying who approved it and why.
+#   - Do not add a value here to make a red build go green. Remove the value from
+#     the page instead, unless it genuinely belongs on a public site.
+#   - Credentials are never allowlisted. Rotate them.
+#
+# Format:
+#   <literal value>   # approved by <who>, <date> - <why>
+#
+# Intentionally empty. Nothing has been pre-approved. The first entries should
+# be the general contact details we actually want published, once those are
+# settled on the contact and legal pages.
