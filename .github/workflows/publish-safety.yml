@@ -1,13 +1,27 @@
 name: Publish safety
 
-# Enforces R-10: a layout-less page can ship without crawl protection and nothing
-# warns you. Agent-driven publishing removed the human upload step that used to
-# catch this, so it is enforced here instead of by operator vigilance.
+# Two gates, one workflow.
+#
+# crawl-protection - enforces R-10: a layout-less page can ship without crawl
+#   protection and nothing warns you. Agent-driven publishing removed the human
+#   upload step that used to catch this, so it is enforced here instead of by
+#   operator vigilance.
+#
+# disclosure-scan - enforces Rule 7: the repository can be made private, but the
+#   site cannot. Added 8/9/2026 after the legal migration published a Tax ID, two
+#   office phone numbers, and a full client agreement with rate card. Every one
+#   arrived through a good-faith paste of an exported document.
+#
+# The first asks "can this be indexed when it should not be".
+# The second asks "should these words be public at all".
 #
 # Hardened 8/8/2026 per PSS findings F-2 and F-3 on MARKETING-917.
+# Extended 8/9/2026 per MARKETING-949 closeout audit.
 #
-# NOTE: this workflow only becomes a gate once branch protection on main lists
-# it as a required status check. Until then a red run blocks nothing.
+# NOTE: branch protection lists required status checks INDIVIDUALLY, by job
+# name. Adding a job here does not make it a gate. Both crawl-protection and
+# disclosure-scan must appear in the required-checks list on main, or a red run
+# blocks nothing.
 
 on:
   pull_request:
@@ -110,3 +124,13 @@ jobs:
             echo "All posts carry front matter and resolve to exactly one lane."
           fi
           exit $fail
+
+  disclosure-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Nothing sensitive reaches public output
+        run: |
+          chmod +x .github/scripts/disclosure-scan.sh
+          .github/scripts/disclosure-scan.sh
