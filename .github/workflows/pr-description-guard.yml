@@ -3,7 +3,11 @@ name: PR description guard
 # Enforces the PR security policy. This repository is public: PR bodies and
 # commit messages are readable by anyone and are permanent. Change
 # documentation lives in the authenticated change record; GitHub carries only
-# a link to it.
+# a link to it and an attribution trailer naming the author.
+#
+# Attribution trailers are excluded from the length budgets so that naming the
+# author never competes with the change-record link for space. They are never
+# excluded from content scanning.
 #
 # Any change to the script below must be tested against the inputs it is meant
 # to reject before it is merged.
@@ -26,6 +30,7 @@ jobs:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
           fail=0
+          TRAILER_RE='^[[:space:]]*(authored-by|authored-by-agent|co-authored-by|signed-off-by)[[:space:]]*:'
 
           # Gate 1: change-record link present (any ClickUp subdomain).
           if ! printf '%s' "$PR_BODY" | grep -Eqi 'https://([a-z0-9-]+\.)+clickup\.com/'; then
@@ -41,16 +46,26 @@ jobs:
             fail=1
           fi
 
-          # Gate 3: visible (non-comment) length.
           if [ "$open_count" -eq "$close_count" ]; then
             stripped=$(printf '%s' "$PR_BODY" | awk 'BEGIN{RS="\0"} {gsub(/<!--([^-]|-[^-]|--+[^->])*--+>/," "); printf "%s",$0}')
           else
             stripped="$PR_BODY"
           fi
-          stripped=$(printf '%s' "$stripped" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
-          visible_count=${#stripped}
+
+          # Gate 3a: a trailer is one short metadata line. Longer lines are
+          # prose and must not be able to buy themselves out of the budget.
+          long_trailer=$(printf '%s\n' "$stripped" | grep -iE "$TRAILER_RE" | awk 'length($0)>100 {print; exit}')
+          if [ -n "$long_trailer" ]; then
+            echo "::error::An attribution trailer line exceeds 100 characters. A trailer carries a name and team only; put everything else in the change record."
+            fail=1
+          fi
+
+          # Gate 3b: visible (non-comment, non-trailer) length.
+          counted=$(printf '%s\n' "$stripped" | grep -viE "$TRAILER_RE" || true)
+          counted=$(printf '%s' "$counted" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+          visible_count=${#counted}
           if [ "$visible_count" -gt 300 ]; then
-            echo "::error::PR description is $visible_count visible characters (limit 300). Keep it to the change-record link and a short title."
+            echo "::error::PR description is $visible_count visible characters (limit 300, excluding attribution trailers). Keep it to the change-record link and a short title."
             fail=1
           fi
 
@@ -62,12 +77,25 @@ jobs:
             fail=1
           fi
 
+          # Gate 7: attribution. Advisory while the convention is adopted.
+          attr=$(printf '%s\n' "$stripped" | grep -iE '^[[:space:]]*authored-by(-agent)?[[:space:]]*:' | head -1 || true)
+          attr_value=$(printf '%s' "$attr" | sed -E 's/^[[:space:]]*[Aa]uthored-[Bb]y(-[Aa]gent)?[[:space:]]*:[[:space:]]*//')
+          if [ -n "$long_trailer" ]; then
+            : # trailer content is suspect; do not echo it back into a public log
+          elif [ -z "$attr" ]; then
+            echo "::notice::No Authored-by trailer found. Add 'Authored-by: Name (Team)' so the record shows who authored this change."
+          elif printf '%s' "$attr_value" | grep -q '[<>]' || [ -z "$attr_value" ]; then
+            echo "::notice::Authored-by trailer is still a placeholder. Replace it with 'Authored-by: Name (Team)'."
+          else
+            echo "Attributed to: $(printf '%s' "$attr_value" | cut -c1-60)"
+          fi
+
           if [ "$fail" -eq 0 ]; then
             echo "PR body compliant: $visible_count visible chars, $raw_count raw chars."
           fi
           exit $fail
 
-      - name: Commit messages must stay minimal and free of sensitive terms
+      - name: Commit messages must stay minimal, attributed and free of sensitive terms
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
@@ -76,6 +104,7 @@ jobs:
           fail=0
           MSG_LIMIT=300
           SENSITIVE='tax id|taxpayer id|\bEIN\b|\bSSN\b|social security|client agreement|rate card|retainer|credential|password|api[ -]?key|secret key|private key'
+          TRAILER_RE='^[[:space:]]*(authored-by|authored-by-agent|co-authored-by|signed-off-by)[[:space:]]*:'
 
           MSGS=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/commits" \
                    --jq '.[].commit.message + "\u001e"')
@@ -83,22 +112,39 @@ jobs:
           while IFS= read -r -d $'\x1e' m || [ -n "$m" ]; do
             [ -z "$(printf '%s' "$m" | tr -d '[:space:]')" ] && continue
             subject=$(printf '%s' "$m" | head -1 | cut -c1-60)
-            norm=$(printf '%s' "$m" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
-            n=${#norm}
 
-            if [ "$n" -gt "$MSG_LIMIT" ]; then
-              echo "::error::Commit message is $n characters (limit $MSG_LIMIT): \"$subject\". Commit messages are public and permanent. Keep to a subject line and put the rationale in the change record."
+            # Gate 5a: trailer lines stay short.
+            long_trailer=$(printf '%s\n' "$m" | grep -iE "$TRAILER_RE" | awk 'length($0)>100 {print; exit}')
+            if [ -n "$long_trailer" ]; then
+              echo "::error::An attribution trailer in \"$subject\" exceeds 100 characters. A trailer carries a name and team only."
               fail=1
             fi
 
-            if printf '%s' "$norm" | grep -qi 'disclosure-ok'; then
+            # Gate 5b: length budget excludes trailers.
+            body_only=$(printf '%s\n' "$m" | grep -viE "$TRAILER_RE" || true)
+            norm=$(printf '%s' "$body_only" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+            n=${#norm}
+            if [ "$n" -gt "$MSG_LIMIT" ]; then
+              echo "::error::Commit message is $n characters excluding trailers (limit $MSG_LIMIT): \"$subject\". Commit messages are public and permanent. Keep to a subject line and put the rationale in the change record."
+              fail=1
+            fi
+
+            # Gate 6: disclosure vocabulary, scanned across the whole message
+            # including trailers. The carve-out above is length-only.
+            full=$(printf '%s' "$m" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+            if printf '%s' "$full" | grep -qi 'disclosure-ok'; then
               echo "::notice::Disclosure waiver honored for \"$subject\"."
             else
-              hits=$(printf '%s' "$norm" | grep -oiE "$SENSITIVE" | sort -u | tr '\n' ',' | sed 's/,$//')
+              hits=$(printf '%s' "$full" | grep -oiE "$SENSITIVE" | sort -u | tr '\n' ',' | sed 's/,$//')
               if [ -n "$hits" ]; then
                 echo "::error::Commit message references sensitive terms ($hits) in \"$subject\". If intended, add a disclosure-ok marker to the message."
                 fail=1
               fi
+            fi
+
+            # Gate 7: attribution. Advisory while the convention is adopted.
+            if ! printf '%s\n' "$m" | grep -qiE '^[[:space:]]*authored-by(-agent)?[[:space:]]*:'; then
+              echo "::notice::Commit \"$subject\" has no Authored-by trailer. Add 'Authored-by: Name (Team)' as the last line."
             fi
           done < <(printf '%s' "$MSGS")
 
