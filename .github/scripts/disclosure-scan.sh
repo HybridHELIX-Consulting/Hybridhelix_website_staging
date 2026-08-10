@@ -82,6 +82,11 @@ if [ "${#FILES[@]}" -eq 0 ]; then
 fi
 
 # -------------------------------------------------------------------- scan
+#
+# Reports EVERY unique match on a line, not just the first. Taking only the
+# first meant two sensitive values sharing a line produced one finding, and
+# allowlisting the first silently suppressed the second - failing open, and
+# doing so precisely when someone had correctly approved a legitimate value.
 
 scan() {
   local id="$1" severity="$2" pattern="$3" message="$4"
@@ -94,17 +99,18 @@ scan() {
 
       case "$text" in *disclosure-ok*) continue ;; esac
 
-      match="$(printf '%s' "$text" | grep -oE "$pattern" | head -n 1)"
-      [ -z "$match" ] && continue
-      is_allowed "$match" && continue
+      while IFS= read -r match; do
+        [ -z "$match" ] && continue
+        is_allowed "$match" && continue
 
-      if [ "$severity" = "block" ]; then
-        echo "::error file=$f,line=$lineno::[$id] $message  (found: $match)"
-        blockers=$((blockers + 1))
-      else
-        echo "::warning file=$f,line=$lineno::[$id] $message  (found: $match)"
-        warnings=$((warnings + 1))
-      fi
+        if [ "$severity" = "block" ]; then
+          echo "::error file=$f,line=$lineno::[$id] $message  (found: $match)"
+          blockers=$((blockers + 1))
+        else
+          echo "::warning file=$f,line=$lineno::[$id] $message  (found: $match)"
+          warnings=$((warnings + 1))
+        fi
+      done < <(printf '%s' "$text" | grep -oE "$pattern" | sort -u)
     done < <(grep -nEI "$pattern" "$f" 2>/dev/null || true)
   done
 }
