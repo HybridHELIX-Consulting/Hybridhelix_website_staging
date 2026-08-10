@@ -6,9 +6,12 @@ name: PR description guard
 # from leaking to the public repository.
 #
 # Added 8/9/2026 per PR security policy discussion.
+# Hardened 8/9/2026: see the Change Log page in the project notebook.
 #
-# NOTE: This job must be added to the branch protection required-checks list on
-# main to become a blocking gate.
+# NOTE: This job is on the branch protection required-checks list on main, so a
+# red run blocks the merge. Test any change to the script below against the
+# failure modes it exists to catch before merging it -- a green run on clean
+# input proves nothing.
 
 on:
   pull_request:
@@ -29,22 +32,55 @@ jobs:
         run: |
           fail=0
 
-          # Gate 1: ClickUp URL must be present
-          if ! echo "$PR_BODY" | grep -Eq 'https://app\.clickup\.com/'; then
-            echo "::error::PR description must contain a ClickUp document URL. All change documentation lives in the project notebook, not on GitHub. See .github/PULL_REQUEST_TEMPLATE.md."
+          # --- Gate 1: a ClickUp URL must be present -------------------------
+          # Any ClickUp subdomain, case-insensitive. URLs copied out of the
+          # browser render as hybridhelix.clickup.com; the API and older links
+          # use app.clickup.com. Both are valid.
+          if ! printf '%s' "$PR_BODY" | grep -Eqi 'https://([a-z0-9-]+\.)+clickup\.com/'; then
+            echo "::error::PR description must contain a ClickUp document URL. All change documentation lives in the project notebook Change Log page, not on GitHub. See .github/PULL_REQUEST_TEMPLATE.md."
             fail=1
           fi
 
-          # Gate 2: strip HTML comments (the template instructions) and check length
-          stripped=$(echo "$PR_BODY" | sed '/<!--/,/-->/d' | tr -s '[:space:]' ' ' | xargs)
-          char_count=${#stripped}
+          # --- Gate 2: every HTML comment must be terminated -----------------
+          # An unterminated <!-- would let the strip below swallow the rest of
+          # the body, defeating the length cap. It is also suspicious in its
+          # own right.
+          open_count=$(printf '%s' "$PR_BODY" | grep -o -e '<!--' | wc -l | tr -d ' ')
+          close_count=$(printf '%s' "$PR_BODY" | grep -o -e '-->' | wc -l | tr -d ' ')
+          if [ "$open_count" -ne "$close_count" ]; then
+            echo "::error::PR description contains an unterminated HTML comment ($open_count opening, $close_count closing). Close every <!-- with a -->. Note that comment text is NOT private: it is fully readable in the raw PR body and via the public API."
+            fail=1
+          fi
 
-          if [ "$char_count" -gt 300 ]; then
-            echo "::error::PR description is $char_count characters (limit: 300). Keep it to the ClickUp link and a short title. Internal context belongs in the ClickUp change page, not the public GitHub PR."
+          # --- Gate 3: visible (non-comment) length --------------------------
+          # Non-greedy comment match so that two separate comments are not
+          # merged into one span. If comments are unbalanced, count the raw
+          # body instead of trusting a partial strip.
+          if [ "$open_count" -eq "$close_count" ]; then
+            stripped=$(printf '%s' "$PR_BODY" | awk 'BEGIN{RS="\0"} {gsub(/<!--([^-]|-[^-]|--+[^->])*--+>/," "); printf "%s",$0}')
+          else
+            stripped="$PR_BODY"
+          fi
+          stripped=$(printf '%s' "$stripped" | tr -s '[:space:]' ' ' | sed 's/^ //; s/ $//')
+          visible_count=${#stripped}
+
+          if [ "$visible_count" -gt 300 ]; then
+            echo "::error::PR description is $visible_count visible characters (limit: 300). Keep it to the ClickUp link and a short title. Internal context belongs in the ClickUp Change Log page, not the public GitHub PR."
+            fail=1
+          fi
+
+          # --- Gate 4: raw length cap ----------------------------------------
+          # Comment text is publicly readable, so bound total volume regardless
+          # of where it sits. The committed template is ~550 characters, which
+          # leaves ample headroom for a URL and a title.
+          raw=$(printf '%s' "$PR_BODY" | tr -s '[:space:]' ' ')
+          raw_count=${#raw}
+          if [ "$raw_count" -gt 1500 ]; then
+            echo "::error::PR description is $raw_count raw characters including comments (limit: 1500). Hiding text in an HTML comment does not make it private -- it is readable in the raw body and via the API. Move it to the ClickUp Change Log page."
             fail=1
           fi
 
           if [ "$fail" -eq 0 ]; then
-            echo "PR description is compliant: contains ClickUp link, no excess content."
+            echo "PR description is compliant: ClickUp link present, $visible_count visible chars, $raw_count raw chars."
           fi
           exit $fail
