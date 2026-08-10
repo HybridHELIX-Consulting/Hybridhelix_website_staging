@@ -11,8 +11,6 @@ index: true
 
 **HybridHELIX Consulting LLC**\
 2105 Vista Oeste Dr NW Suite E #3606, Albuquerque, NM, 87120, United States\
-505-750-8226\
-Tax ID: 82-5064557\
 (Hereinafter referred to as "Service Provider")
 
 By signing this Agreement, Client has retained HybridHELIX Consulting LLC ("Service Provider") to proceed with the requested Momentum Accelerator services, and agrees to the terms and conditions as set forth within this agreement.
