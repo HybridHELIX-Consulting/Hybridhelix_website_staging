@@ -1,0 +1,71 @@
+name: Link rot (weekly)
+
+# Scheduled external link check. Non-blocking.
+# Third-party sites go down, rate-limit, and redirect. This must never
+# be a merge gate. It runs weekly and opens an issue when it finds rot.
+
+on:
+  schedule:
+    - cron: '30 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  external-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Build site
+        env:
+          JEKYLL_ENV: production
+        run: bundle exec jekyll build --trace
+
+      - name: HTMLProofer (external links)
+        id: proofer
+        continue-on-error: true
+        run: |
+          bundle exec htmlproofer ./_site \
+            --checks Links \
+            --ignore-urls "/^#$/" \
+            --allow-missing-href \
+            --typhoeus '{"ssl_verifypeer":false,"timeout":30,"connecttimeout":10}' \
+            --hydra '{"max_concurrency":5}' \
+            2>&1 | tee /tmp/proofer-output.txt
+
+      - name: Open or update issue on failure
+        if: steps.proofer.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="Link rot detected (automated scan)"
+          BODY=$(cat <<'EOF'
+          ## External link failures
+
+          The weekly HTMLProofer scan found broken external links.
+          Review the [workflow run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
+
+          _This issue is auto-generated. It will be updated on the next failing run._
+          EOF
+          )
+
+          EXISTING=$(gh issue list --label "link-rot" --state open --json number --jq '.[0].number' 2>/dev/null || true)
+
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --body "Updated: new failures found in run ${{ github.run_id }}. Check the workflow log."
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "link-rot"
+          fi
