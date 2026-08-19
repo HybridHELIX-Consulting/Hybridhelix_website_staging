@@ -80,7 +80,7 @@ Depending on your location, you may have certain rights regarding your Personal 
 - **Opt-Out of Marketing:** You can opt-out of receiving promotional emails from us by following the unsubscribe instructions included in those emails or by contacting us directly. You may still receive essential service-related communications.
 - **Cookie Preferences:** You can manage cookie preferences as described in Section 4.
 
-To exercise these rights, please contact us using the information below. We may need to verify your identity before processing your request.
+To exercise these rights, please contact us using the information provided below. We may need to verify your identity before processing your request.
 
 ## 8. Children's Privacy
 
@@ -100,5 +100,5 @@ If you have any questions about this Privacy Policy or our privacy practices, pl
 
 HybridHELIX Consulting LLC\
 technicaladministration@hybridhelix.net\
-2105 Vista Oeste Dr NW Ste E2015\
+2105 Vista Oeste Dr NW Ste E3606\
 Albuquerque, NM 87120
