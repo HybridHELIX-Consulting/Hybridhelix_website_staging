@@ -25,7 +25,16 @@ jobs:
   pr-template-compliance:
     runs-on: ubuntu-latest
     steps:
+      - name: Bot actor bypass
+        id: bot-check
+        run: |
+          if [ "${{ github.actor }}" = "dependabot[bot]" ] || [ "${{ github.actor }}" = "github-actions[bot]" ]; then
+            echo "::notice::Bot PR detected. Change Log entry is the responsibility of the human who merges."
+            echo "is_bot=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: PR body must link to the change record and stay minimal
+        if: steps.bot-check.outputs.is_bot != 'true'
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: |
@@ -96,6 +105,7 @@ jobs:
           exit $fail
 
       - name: Commit messages must stay minimal, attributed and free of sensitive terms
+        if: steps.bot-check.outputs.is_bot != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
