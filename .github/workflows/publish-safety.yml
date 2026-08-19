@@ -2,34 +2,13 @@ name: Publish safety
 
 # Two gates, one workflow.
 #
-# crawl-protection - enforces R-10: a layout-less page can ship without crawl
-#   protection and nothing warns you. Agent-driven publishing removed the human
-#   upload step that used to catch this, so it is enforced here instead of by
-#   operator vigilance.
+# crawl-protection - pages must declare crawl intent matching CRAWL_MODE.
+# disclosure-scan - the site must not ship sensitive content.
 #
-# disclosure-scan - enforces Rule 7: the repository can be made private, but the
-#   site cannot. Added 8/9/2026 after the legal migration published a Tax ID, two
-#   office phone numbers, and a full client agreement with rate card. Every one
-#   arrived through a good-faith paste of an exported document.
-#
-# The first asks "can this be indexed when it should not be".
-# The second asks "should these words be public at all".
-#
-# Hardened 8/8/2026 per PSS findings F-2 and F-3 on MARKETING-917.
-# Extended 8/9/2026 per MARKETING-949 closeout audit.
-#
-# Runner note: actions/checkout is pinned to v6 to match jekyll.yml. v4 runs on
-# Node 20, which is end-of-life and currently forced onto Node 24 by the runner.
-# Keep all three jobs in this repository on the same checkout major - version
-# skew between the deploy workflow and the gates is how one of them quietly
-# stops working while the other looks fine.
-#
-# NOTE: branch protection lists required status checks INDIVIDUALLY, by job
-# name. Adding a job here does not make it a gate. Both crawl-protection and
-# disclosure-scan must appear in the required-checks list on main, or a red run
-# blocks nothing. Conversely, requiring a check whose workflow is not yet on
-# main leaves every other pull request waiting on a status that can never
-# report - land the workflow first, then require it.
+# CRAWL_MODE controls the assertion direction:
+#   staging    -> noindex must be present (default)
+#   production -> noindex must be absent
+# The flip is a single env-var change at root-domain cutover.
 
 on:
   pull_request:
@@ -41,43 +20,78 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CRAWL_MODE: staging
+
 jobs:
   crawl-protection:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
 
-      - name: Every published HTML page must be layout-based or explicitly noindexed
+      - name: Every published page must declare crawl intent matching CRAWL_MODE
         run: |
           fail=0
-          while IFS= read -r f; do
-            # Extract the front matter block, if there is one.
+
+          check_html_file() {
+            local f="$1"
+            # Extract front matter block if present.
             fm=$(awk 'NR==1 && /^---[[:space:]]*$/ {inb=1; next} inb && /^---[[:space:]]*$/ {exit} inb' "$f")
 
             if [ -n "$fm" ]; then
-              # F-2: front matter alone is not enough. A page with front matter but
-              # no layout: key renders outside the layout path, never pulls
-              # _includes/custom-head.html, and publishes with no crawl protection.
               if printf '%s\n' "$fm" | grep -Eq '^layout:[[:space:]]*[^[:space:]#]'; then
-                continue
+                return 0
               fi
-              echo "::error file=$f::Front matter is present but declares no layout. This page renders outside the layout path, so it will not inherit the noindex from _includes/custom-head.html. Add a layout: key. See AUTHORING.md Rule 1."
+              echo "::error file=$f::Front matter is present but declares no layout. Add a layout: key. See AUTHORING.md Rule 1."
+              return 1
+            fi
+
+            # No front matter: check for robots meta tag.
+            if [ "$CRAWL_MODE" = "staging" ]; then
+              if grep -Eqi '<meta[^>]*name=["'"'"']?robots["'"'"']?[^>]*noindex' "$f"; then
+                return 0
+              fi
+              echo "::error file=$f::No layout and no noindex robots meta tag (CRAWL_MODE=staging requires noindex). See AUTHORING.md Rule 1."
+              return 1
+            elif [ "$CRAWL_MODE" = "production" ]; then
+              if grep -Eqi '<meta[^>]*name=["'"'"']?robots["'"'"']?[^>]*noindex' "$f"; then
+                echo "::error file=$f::Page carries noindex but CRAWL_MODE=production. Remove the noindex directive for production pages."
+                return 1
+              fi
+              return 0
+            fi
+          }
+
+          # Check all HTML files (excluding build output, vendor, layouts, includes).
+          while IFS= read -r f; do
+            if ! check_html_file "$f"; then
+              fail=1
+            fi
+          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -name '*.html' -not -path './_layouts/*' -not -path './_includes/*' -print)
+
+          # Check markdown files: must have front matter with a layout key.
+          # Exempt _legal/ (layout applied via _config.yml collection defaults).
+          while IFS= read -r f; do
+            fm=$(awk 'NR==1 && /^---[[:space:]]*$/ {inb=1; next} inb && /^---[[:space:]]*$/ {exit} inb' "$f")
+
+            if [ -z "$fm" ]; then
+              echo "::error file=$f::Markdown page has no front matter. Add front matter with a layout: key. See AUTHORING.md Rule 1."
               fail=1
               continue
             fi
 
-            # F-2: match noindex specifically. The previous check grepped for
-            # name="robots", which passed content="index, follow" just as happily.
-            if grep -Eqi '<meta[^>]*name=["'"'"']?robots["'"'"']?[^>]*noindex' "$f"; then
-              continue
+            if ! printf '%s\n' "$fm" | grep -Eq '^layout:[[:space:]]*[^[:space:]#]'; then
+              echo "::error file=$f::Front matter is present but declares no layout. Add a layout: key."
+              fail=1
             fi
-
-            echo "::error file=$f::No layout and no noindex robots meta tag. This page would publish without crawl protection. Add front matter with a layout, or paste <meta name=\"robots\" content=\"noindex, nofollow\"> into its head. See AUTHORING.md Rule 1."
-            fail=1
-          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -name '*.html' -not -path './_layouts/*' -not -path './_includes/*' -print)
+          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -path ./_legal -prune -o \( -name '*.md' -o -name '*.markdown' \) -not -name 'README.md' -not -name 'AUTHORING.md' -not -name 'CHANGELOG.md' -not -path './_layouts/*' -not -path './_includes/*' -print)
 
           if [ "$fail" -eq 0 ]; then
-            echo "All published HTML pages are layout-based or explicitly noindexed."
+            echo "All published pages pass crawl-protection check (CRAWL_MODE=$CRAWL_MODE)."
           fi
           exit $fail
 
@@ -95,9 +109,6 @@ jobs:
                 continue
               fi
 
-              # F-3: the lane derives from categories | first, so a second or
-              # misspelled category silently changes both the URL and the label.
-              # Require exactly one, and require it to be a known lane.
               cats=$(printf '%s\n' "$fm" \
                 | sed -n 's/^categories:[[:space:]]*//p' \
                 | tr -d '[]"'"'"',' )
