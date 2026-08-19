@@ -1,0 +1,46 @@
+name: Site build
+
+# Build check + internal link validation.
+# The build step is blocking: a broken build is a broken site.
+# HTMLProofer runs internal-only checks in warn-only mode until promoted.
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+          bundler-cache: true
+
+      - name: Build site
+        env:
+          JEKYLL_ENV: production
+        run: bundle exec jekyll build --trace
+
+      - name: HTMLProofer (internal links, warn-only)
+        continue-on-error: true
+        run: |
+          bundle exec htmlproofer ./_site \
+            --disable-external \
+            --check-html \
+            --check-img-http \
+            --enforce-https \
+            --checks Links,Images,Scripts \
+            --ignore-urls "/^#$/" \
+            --allow-missing-href
