@@ -45,7 +45,7 @@ jobs:
   crawl-protection:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Every published HTML page must be layout-based or explicitly noindexed
         run: |
@@ -136,7 +136,7 @@ jobs:
   disclosure-scan:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Nothing sensitive reaches public output
         run: |
