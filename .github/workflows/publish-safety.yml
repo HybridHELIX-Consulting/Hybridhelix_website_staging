@@ -74,7 +74,8 @@ jobs:
           done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -name '*.html' -not -path './_layouts/*' -not -path './_includes/*' -print)
 
           # Check markdown files: must have front matter with a layout key.
-          # Exempt _legal/ (layout applied via _config.yml collection defaults).
+          # Exempt _legal/ and _posts/ (layout applied via _config.yml collection defaults).
+          # Exempt .github/ (repository meta-files, not Jekyll pages).
           while IFS= read -r f; do
             fm=$(awk 'NR==1 && /^---[[:space:]]*$/ {inb=1; next} inb && /^---[[:space:]]*$/ {exit} inb' "$f")
 
@@ -88,7 +89,7 @@ jobs:
               echo "::error file=$f::Front matter is present but declares no layout. Add a layout: key."
               fail=1
             fi
-          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -path ./_legal -prune -o \( -name '*.md' -o -name '*.markdown' \) -not -name 'README.md' -not -name 'AUTHORING.md' -not -name 'CHANGELOG.md' -not -path './_layouts/*' -not -path './_includes/*' -print)
+          done < <(find . -path ./_site -prune -o -path ./vendor -prune -o -path ./_legal -prune -o -path ./.github -prune -o -path ./_posts -prune -o \( -name '*.md' -o -name '*.markdown' \) -not -name 'README.md' -not -name 'AUTHORING.md' -not -name 'CHANGELOG.md' -not -path './_layouts/*' -not -path './_includes/*' -print)
 
           if [ "$fail" -eq 0 ]; then
             echo "All published pages pass crawl-protection check (CRAWL_MODE=$CRAWL_MODE)."
